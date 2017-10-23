@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camel="http://camel.apache.org/schema/spring"
+	xmlns:context="http://www.springframework.org/schema/context" xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+       http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.0.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<!-- Camel Contexts via XML configured -->
+	<camel:camelContext id="camelContextXml">
+		<!-- <camel:route id="camelInOut"> <camel:from uri="aq:queue:AIA_SALESORDNTF2_JMSQ"
+			/> <camel:to uri="log: 'Hello World : {$body}'" /> <camel:to uri="aq:queue:AIA_SALESORDNTF2_JMSQ"
+			/> </camel:route> -->
+
+
+		<camel:properties>
+			<!-- <camel:property key="CamelLogDebugBodyStreams" value="false"/> -->
+			<camel:property key="CamelLogDebugBodyMaxChars" value="100000" />
+		</camel:properties>
+
+
+		<camel:errorHandler id="noErrorHanlder" type="NoErrorHandler" />
+		<camel:onException>
+			<camel:exception>java.lang.RuntimeException</camel:exception>
+			<camel:handled>
+				<camel:constant>true</camel:constant>
+			</camel:handled>
+			<camel:setHeader headerName="springBootCamelIntegrationStackTrace">
+				<camel:simple>${exception.stacktrace}</camel:simple>
+			</camel:setHeader>
+			<camel:to uri="bean:defaultExceptionHandler?method=process" />
+			<camel:to
+				uri="bean:endpointLogger?method=logEvent(*,*,*,'RuntimeException occurred',true)" />
+		</camel:onException>
+
+		<!-- Route definition to read the Sonic Queue at AIA, perform the Xsl transformation
+			2 times, and then send the message to Siebel Queue -->
+		<camel:route id="MCOM_AIA_SIEBEL" streamCache="true">
+			<camel:from uri="ref:mcomOrderStatusInQ" />
+			<camel:to
+				uri="bean:endpointLogger?method=logEvent(*,*,*,'Received Order Status Notification from MCOM at AIA',true)" />
+			<camel:to uri="bean:logAudit?method=process" />
+			<camel:to
+				uri="xslt://AIAXslts/Transform_UpdateSalesOrderLineStatusListEBM_Updated.xsl?transformerFactoryClass=net.sf.saxon.TransformerFactoryImpl" />
+			<camel:to
+				uri="bean:endpointLogger?method=logEvent(*,*,*,'Transformed Order Status Notification from MCOM to AIA Format',true)" />
+			<camel:to uri="bean:logAudit?method=process" />
+			<camel:to
+				uri="xslt://AIAXslts/Transform_McomTOSiebel_1.xsl?transformerFactoryClass=net.sf.saxon.TransformerFactoryImpl" />
+			<camel:to
+				uri="bean:endpointLogger?method=logEvent(*,*,*,'Transformed Order Status Notification from AIA to SIEBEL Format',true)" />
+			<camel:to uri="bean:logAudit?method=process" />
+			<camel:to uri="aq:queue:AIA_SALESORDNTF2_JMSQ?jmsMessageType=Bytes" />
+		</camel:route>
+
+	</camel:camelContext>
+
+	<bean id="connectionFactoryOracleAQ" class="oracle.jms.AQjmsFactory"
+		factory-method="getQueueConnectionFactory" primary="true">
+		<constructor-arg index="0"
+			value="jdbc:oracle:thin:@10.120.213.58:1540:AIA01D" />
+		<constructor-arg index="1" type="java.util.Properties"
+			value="" />
+	</bean>
+
+	<bean id="aqCredentials"
+		class="org.springframework.jms.connection.UserCredentialsConnectionFactoryAdapter">
+		<property name="targetConnectionFactory" ref="connectionFactoryOracleAQ" />
+		<property name="username" value="JMSUSER" />
+		<property name="password" value="JMSUSER" />
+	</bean>
+
+	<bean id="aq" class="org.apache.camel.component.jms.JmsComponent">
+		<property name="connectionFactory" ref="aqCredentials" />
+	</bean>
+
+	<bean id="jndiTemplate" class="org.springframework.jndi.JndiTemplate">
+		<property name="environment">
+			<props>
+				<!-- Use property below -->
+				<prop key="java.naming.factory.initial">com.sonicsw.jndi.mfcontext.MFContextFactory</prop>
+				<prop key="java.naming.provider.url">tcp://ozou6021:2506,tcp://ozou6022:2506</prop>
+				<prop key="com.sonicsw.jndi.mfcontext.domain">esb_b1</prop>
+				<!-- opional ... -->
+				<prop key="java.naming.security.principal">id973752</prop>
+				<prop key="java.naming.security.credentials">AIAPIT52</prop>
+			</props>
+		</property>
+	</bean>
+
+	<!-- Gets a JMS Connection factory object from JDNI Server by jndiName -->
+	<bean id="jmsConnectionFactory" class="org.springframework.jndi.JndiObjectFactoryBean">
+		<property name="jndiTemplate" ref="jndiTemplate" />
+		<!-- Use property below -->
+		<property name="jndiName" value="qcf_aia" />  <!-- the connection factory object is store under this name -->
+	</bean>
+
+	<bean id="jmsConfig" class="org.apache.camel.component.jms.JmsConfiguration">
+		<property name="connectionFactory" ref="jmsConnectionFactory" />
+		<!-- Use property below -->
+		<property name="concurrentConsumers" value="1" />
+	</bean>
+
+	<!-- Define Sonic bean as a JMSComponent to be used by Camel Context, otherwise
+		Camel Context does not know about how to connect to Sonic -->
+	<bean id="sonic" class="org.apache.camel.component.jms.JmsComponent">
+		<property name="configuration" ref="jmsConfig" />
+	</bean>
+
+	<!-- End point to retrieve the Order status notification from MCOM at AIA
+		Side, configure the below as a property -->
+	<camel:endpoint id="mcomOrderStatusInQ"
+		uri="sonic:gw.aia.event.mcom.orderprogress.v6.in.q?username=id973752&amp;password=AIAPIT52&amp;asyncConsumer=true" />
+	<!-- Define Camel Routes Below -->
+	<!-- autoStartup="true" -->
+
+	<bean id="defaultErrorHandler" class="org.apache.camel.builder.DefaultErrorHandlerBuilder" />
+
+</beans>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="60 seconds">
+
+    <!-- PROPERTIES -->
+    <property name="layout"
+        value="%d{HH:mm:ss.SSS} %-5level [%thread][%logger{0}] %m%n" />
+    <property name="logFile" value="application" />
+    <property name="logFile-audit" value="application-audit" />
+
+
+    <!-- APPENDERS -->
+    <appender name="LOG_FILE"
+        class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <File>${logFile}.log</File>
+        <rollingPolicy
+            class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${logFile}.%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${layout}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="LOG_FILE_AUDIT"
+        class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${logFile-audit}.log</file>
+        <rollingPolicy
+            class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${logFile-audit}.%d{yyyy-MM-dd}.log
+            </fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${layout}</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="LOG_STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${layout}</pattern>
+        </encoder>
+    </appender>
+
+    <!-- LOGGERS -->
+    <logger name="com.proximus.SpringBootCamelIntegration" level="INFO" additivity="false">
+    	<appender-ref ref="LOG_FILE" />
+    </logger>
+    <logger name="org.camel.audit" level="INFO" additivity="false">
+    	<appender-ref ref="LOG_FILE_AUDIT" />
+    </logger>
+
+    <root level="INFO">
+        <appender-ref ref="LOG_STDOUT" />
+    </root>
+
+</configuration>

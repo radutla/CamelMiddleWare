@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:camel="http://camel.apache.org/schema/spring"
+	xmlns:cxf="http://camel.apache.org/schema/cxf" xmlns:sec="http://cxf.apache.org/configuration/security"
+	xmlns:http="http://cxf.apache.org/transports/http/configuration"
+	xmlns:httpj="http://cxf.apache.org/transports/http-jetty/configuration"
+	xsi:schemaLocation="
+       http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/spring
+       http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<!-- removed the below namespace references as they are not being used http://camel.apache.org/schema/cxf
+		http://camel.apache.org/schema/cxf/camel-cxf.xsd http://cxf.apache.org/configuration/security
+		http://cxf.apache.org/schemas/configuration/security.xsd http://cxf.apache.org/transports/http/configuration
+		http://cxf.apache.org/schemas/configuration/http-conf.xsd http://cxf.apache.org/transports/http-jetty/configuration
+		http://cxf.apache.org/schemas/configuration/http-jetty.xsd -->
+
+	<bean id="jndiTemplate" class="org.springframework.jndi.JndiTemplate">
+		<property name="environment">
+			<props>
+				<!-- Use property below -->
+				<prop key="java.naming.factory.initial">com.sonicsw.jndi.mfcontext.MFContextFactory</prop>
+				<prop key="java.naming.provider.url">tcp://ozoi6000:2506</prop>
+				<prop key="com.sonicsw.jndi.mfcontext.domain">esb_i1</prop>
+				<!-- opional ... -->
+				<prop key="java.naming.security.principal">id971312</prop>
+				<prop key="java.naming.security.credentials">aol312</prop>
+			</props>
+		</property>
+	</bean>
+
+	<!-- Gets a JMS Connection factory object from JDNI Server by jndiName -->
+	<bean id="jmsConnectionFactory" class="org.springframework.jndi.JndiObjectFactoryBean">
+		<property name="jndiTemplate" ref="jndiTemplate" />
+		<!-- Use property below -->
+		<property name="jndiName" value="qcf_aol" />  <!-- the connection factory object is store under this name -->
+	</bean>
+
+	<bean id="jmsConfig" class="org.apache.camel.component.jms.JmsConfiguration">
+		<property name="connectionFactory" ref="jmsConnectionFactory" />
+		<!-- Use property below -->
+		<property name="concurrentConsumers" value="1" />
+	</bean>
+
+	<!-- Define Sonic bean as a JMSComponent to be used by Camel Context, otherwise
+		Camel Context does not know about how to connect to Sonic -->
+	<bean id="sonic" class="org.apache.camel.component.jms.JmsComponent">
+		<property name="configuration" ref="jmsConfig" />
+	</bean>
+
+	<!-- End point to retrieve the Order status notification from MCOM at AIA
+		Side, configure the below as a property -->
+	<camel:endpoint id="mcomOrderStatusInQ"
+		uri="sonic:gw.aol.response.in.q?username=id971312&amp;password=aol312&amp;asyncConsumer=true" />
+	<!-- End point to sent the Order status notification from AIA to Siebel
+		Side Queue, configure the below as a property -->
+	<camel:endpoint id="seibelOrderStatusOutQ"
+		uri="sonic:queue:gw.aol.in.q?username=id971312&amp;password=aol312&amp;jmsMessageType=Text&amp;disableReplyTo=true&amp;asyncConsumer=true" />
+
+	<!-- Define Camel Routes Below -->
+	<!-- autoStartup="true" -->
+
+	<bean id="defaultErrorHandler" class="org.apache.camel.builder.DefaultErrorHandlerBuilder"/>
+
+	<camel:camelContext id="springBootCamelIntegration"
+		streamCache="true" errorHandlerRef="defaultErrorHandler">
+
+
+		<camel:properties>
+			<!-- <camel:property key="CamelLogDebugBodyStreams" value="false"/> -->
+			<camel:property key="CamelLogDebugBodyMaxChars" value="100000" />
+		</camel:properties>
+
+
+		<camel:errorHandler id="noErrorHanlder" type="NoErrorHandler" />
+		<camel:onException>
+			<camel:exception>java.lang.RuntimeException</camel:exception>
+			<camel:handled>
+				<camel:constant>true</camel:constant>
+			</camel:handled>
+			<camel:setHeader headerName="springBootCamelIntegrationStackTrace">
+				<camel:simple>${exception.stacktrace}</camel:simple>
+			</camel:setHeader>
+			<camel:to uri="bean:defaultExceptionHandler?method=process" />
+			<camel:to
+				uri="bean:endpointLogger?method=logEvent(*,*,*,'RuntimeException occurred',true)" />
+		</camel:onException>
+
+		<!-- Route definition to read the Sonic Queue at AIA, perform the Xsl transformation
+			2 times, and then send the message to Siebel Queue -->
+		<camel:route id="MCOM_AIA_SIEBEL" streamCache="true">
+			<camel:from uri="ref:mcomOrderStatusInQ" />
+			<camel:to
+				uri="bean:endpointLogger?method=logEvent(*,*,*,'Received Order Status Notification from MCOM at AIA',true)" />
+			<camel:to uri="bean:logAudit?method=process" />
+			<camel:to
+				uri="xslt://AIAXslts/Transform_UpdateSalesOrderLineStatusListEBM_Updated.xsl?transformerFactoryClass=net.sf.saxon.TransformerFactoryImpl" />
+			<camel:to
+				uri="bean:endpointLogger?method=logEvent(*,*,*,'Transformed Order Status Notification from MCOM to AIA Format',true)" />
+			<camel:to uri="bean:logAudit?method=process" />
+			<camel:to uri="xslt://AIAXslts/Transform_McomTOSiebel_1.xsl?transformerFactoryClass=net.sf.saxon.TransformerFactoryImpl" />
+			<camel:to
+				uri="bean:endpointLogger?method=logEvent(*,*,*,'Transformed Order Status Notification from AIA to SIEBEL Format',true)" />
+			<camel:to uri="bean:logAudit?method=process" />
+			<camel:to uri="ref:seibelOrderStatusOutQ" />
+		</camel:route>
+
+
+	</camel:camelContext>
+
+	<!-- Create a new WebLogic Jms Camel Component <bean id="sonicJMSInQ" class="org.apache.camel.component.jms.JmsComponent">
+		<property name="configuration" ref="jmsConfig" /> </bean> <bean id="sonicJMSOutQ"
+		class="org.apache.camel.component.jms.JmsComponent"> <property name="configuration"
+		ref="jmsConfig" /> </bean> -->
+
+</beans>
