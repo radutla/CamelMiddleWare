@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>com.proximus.bootcamel.she</groupId>
+	<artifactId>camelmiddleware</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<packaging>jar</packaging>
+
+	<name>camelmiddleware</name>
+	<description>This spring boot application helps to act as a middleware between ESB and SIEBEL</description>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>1.5.8.RELEASE</version>
+		<relativePath /> <!-- lookup parent from repository -->
+	</parent>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<java.version>1.8</java.version>
+		<version.camel>2.20.0</version.camel>
+		<sonic.version>8.5.1</sonic.version>
+		<jdbc.path>C:/Data/Learnings/camelmiddleware/CamelMiddleWare/src/main/resources/lib/jdbc-6.jar</jdbc.path>
+		<aqapi.path>C:/Data/Learnings/camelmiddleware/CamelMiddleWare/src/main/resources/lib/aqapi-11g.jar</aqapi.path>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-activemq</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-aop</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-spring-boot-starter</artifactId>
+			<version>${version.camel}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-jms</artifactId>
+			<version>${version.camel}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.camel</groupId>
+			<artifactId>camel-velocity</artifactId>
+			<version>${version.camel}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.cxf</groupId>
+			<artifactId>cxf-spring-boot-starter-jaxrs</artifactId>
+			<version>3.1.11</version>
+		</dependency>
+		<!-- <dependency> <groupId>org.springframework.boot</groupId> <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+			</dependency> -->
+		<!-- <dependency> <groupId>org.springframework.boot</groupId> <artifactId>spring-boot-starter-jdbc</artifactId>
+			</dependency> -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>oracle</groupId>
+			<artifactId>jdbc</artifactId>
+			<version>6</version>
+			<systemPath>${jdbc.path}</systemPath>
+			<scope>system</scope>
+		</dependency>
+		<dependency>
+			<groupId>oracle</groupId>
+			<artifactId>aqapi</artifactId>
+			<version>11g</version>
+			<systemPath>${aqapi.path}</systemPath>
+			<scope>system</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>javax.transaction</groupId>
+			<artifactId>jta</artifactId>
+			<version>1.1</version>
+		</dependency>
+
+		<!-- Sonic -->
+
+		<dependency>
+			<groupId>com.progress.sonic.mq</groupId>
+			<artifactId>sonic_Selector</artifactId>
+			<version>${sonic.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.progress.sonic.mq</groupId>
+			<artifactId>mfcontext</artifactId>
+			<version>${sonic.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.progress.sonic.mq</groupId>
+			<artifactId>sonic_Client</artifactId>
+			<version>${sonic.version}</version>
+		</dependency>
+
+
+		<dependency>
+			<groupId>com.progress.sonic.mq</groupId>
+			<artifactId>sonic_Crypto</artifactId>
+			<version>${sonic.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.progress.sonic.mq</groupId>
+			<artifactId>sonic_XA</artifactId>
+			<version>${sonic.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.progress.sonic.mq</groupId>
+			<artifactId>sonic_XMessage</artifactId>
+			<version>${sonic.version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.progress.sonic.mq</groupId>
+			<artifactId>sonic_Channel</artifactId>
+			<version>8.5.0</version>
+		</dependency>
+
+		<!-- https://mvnrepository.com/artifact/org.apache.servicemix.bundles/org.apache.servicemix.bundles.saxon -->
+		<!-- required to overcome "The first argument to the non-static Java function
+			'formatDateTime' is not a valid object reference." -->
+		<dependency>
+			<groupId>org.apache.servicemix.bundles</groupId>
+			<artifactId>org.apache.servicemix.bundles.saxon</artifactId>
+			<version>9.4.0.1_1</version>
+		</dependency>
+
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+		</plugins>
+	</build>
+
+
+</project>
