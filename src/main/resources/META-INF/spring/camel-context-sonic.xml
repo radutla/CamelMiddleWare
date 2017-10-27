@@ -21,7 +21,7 @@
 			<props>
 				<!-- Use property below -->
 				<prop key="java.naming.factory.initial">com.sonicsw.jndi.mfcontext.MFContextFactory</prop>
-				<prop key="java.naming.provider.url">tcp://ozoi6000:2506</prop>
+				<prop key="java.naming.provider.url">tcp://ozou6021:2506,tcp://ozou6022:2506</prop>
 				<prop key="com.sonicsw.jndi.mfcontext.domain">esb_i1</prop>
 				<!-- opional ... -->
 				<prop key="java.naming.security.principal">id971312</prop>

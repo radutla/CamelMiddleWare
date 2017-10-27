@@ -11,10 +11,6 @@
 
 	<!-- Camel Contexts via XML configured -->
 	<camel:camelContext id="camelContextXml">
-		<!-- <camel:route id="camelInOut"> <camel:from uri="aq:queue:AIA_SALESORDNTF2_JMSQ"
-			/> <camel:to uri="log: 'Hello World : {$body}'" /> <camel:to uri="aq:queue:AIA_SALESORDNTF2_JMSQ"
-			/> </camel:route> -->
-
 
 		<camel:properties>
 			<!-- <camel:property key="CamelLogDebugBodyStreams" value="false"/> -->
@@ -53,7 +49,7 @@
 			<camel:to
 				uri="bean:endpointLogger?method=logEvent(*,*,*,'Transformed Order Status Notification from AIA to SIEBEL Format',true)" />
 			<camel:to uri="bean:logAudit?method=process" />
-			<camel:to uri="aq:queue:AIA_SALESORDNTF2_JMSQ?jmsMessageType=Bytes" />
+			<camel:to uri="ref:oracleDestinationAQ" />
 		</camel:route>
 
 	</camel:camelContext>
@@ -61,7 +57,7 @@
 	<bean id="connectionFactoryOracleAQ" class="oracle.jms.AQjmsFactory"
 		factory-method="getQueueConnectionFactory" primary="true">
 		<constructor-arg index="0"
-			value="jdbc:oracle:thin:@10.120.213.58:1540:AIA01D" />
+			value="${aqjms.connection.url}" />
 		<constructor-arg index="1" type="java.util.Properties"
 			value="" />
 	</bean>
@@ -81,12 +77,12 @@
 		<property name="environment">
 			<props>
 				<!-- Use property below -->
-				<prop key="java.naming.factory.initial">com.sonicsw.jndi.mfcontext.MFContextFactory</prop>
-				<prop key="java.naming.provider.url">tcp://ozou6021:2506,tcp://ozou6022:2506</prop>
-				<prop key="com.sonicsw.jndi.mfcontext.domain">esb_b1</prop>
+				<prop key="java.naming.factory.initial">${sonic.naming.factory.initialContext}</prop>
+				<prop key="java.naming.provider.url">${sonic.connection.provider.url}</prop>
+				<prop key="com.sonicsw.jndi.mfcontext.domain">${sonic.mfcontext.domain}</prop>
 				<!-- opional ... -->
-				<prop key="java.naming.security.principal">id973752</prop>
-				<prop key="java.naming.security.credentials">AIAPIT52</prop>
+				<prop key="java.naming.security.principal">${sonic.security.principal}</prop>
+				<prop key="java.naming.security.credentials">${sonic.security.credentials}</prop>
 			</props>
 		</property>
 	</bean>
@@ -113,8 +109,12 @@
 	<!-- End point to retrieve the Order status notification from MCOM at AIA
 		Side, configure the below as a property -->
 	<camel:endpoint id="mcomOrderStatusInQ"
-		uri="sonic:gw.aia.event.mcom.orderprogress.v6.in.q?username=id973752&amp;password=AIAPIT52&amp;asyncConsumer=true" />
+		uri="sonic:queue:${sonic.aia.q}?username=${sonic.aia.id97}&amp;password=${sonic.aia.password}&amp;asyncConsumer=true" />
 	<!-- Define Camel Routes Below -->
+	
+	<!-- oracleDestinationAQ is the End point for Oracle AQ, the destination Q -->
+	<camel:endpoint id="oracleDestinationAQ" uri="aq:queue:${oracle.aq.name}?jmsMessageType=${oracle.message.type}"/>
+	
 	<!-- autoStartup="true" -->
 
 	<bean id="defaultErrorHandler" class="org.apache.camel.builder.DefaultErrorHandlerBuilder" />
