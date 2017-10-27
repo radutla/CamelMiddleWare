@@ -109,7 +109,7 @@
 	<!-- End point to retrieve the Order status notification from MCOM at AIA
 		Side, configure the below as a property -->
 	<camel:endpoint id="mcomOrderStatusInQ"
-		uri="sonic:queue:${sonic.mcom.q.name}?username=${sonic.q.username}&amp;password=${sonic.q.password}&amp;asyncConsumer=true" />
+		uri="sonic:queue:${sonic.mcom.q.name}?username=${sonic.mcom.q.username}&amp;password=${sonic.mcom.q.password}&amp;asyncConsumer=true" />
 	<!-- Define Camel Routes Below -->
 	
 	<!-- oracleDestinationAQ is the End point for Oracle AQ, the destination Q -->
